@@ -1,7 +1,11 @@
 name: build
 
 on:
-  pull_request:
+  push:
+    branches-ignore:
+      - master
+    tags:
+      - '*'
   workflow_dispatch:
     inputs:
       build_target:
