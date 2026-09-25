@@ -56,17 +56,15 @@ class DownloadImageRetryTest(unittest.TestCase):
     def _not_found(self):
         return urllib.error.HTTPError(IMAGE_URL, 404, "Not Found", {}, None)
 
-    def test_download_image_checksum_timeout_retries(self, stream_to_file, sleep):
+    def test_download_image_checksum_timeout_raises(self, stream_to_file, sleep):
+        # The service loop retries run() with a fresh payload
         with mock.patch.object(
-            guest.http,
-            "stream_to_bytes",
-            side_effect=[TimeoutError(), b"abc  image.raw\n"],
-        ) as stream_to_bytes:
-            guest.GuestCapDriver()._download_image(IMAGE_URL, "/dev/null")
+            guest.http, "stream_to_bytes", side_effect=TimeoutError()
+        ):
+            with self.assertRaises(TimeoutError):
+                guest.GuestCapDriver()._download_image(IMAGE_URL, "/dev/null")
 
-        self.assertEqual(stream_to_bytes.call_count, 2)
-        self.assertEqual(sleep.call_count, 1)
-        stream_to_file.assert_called_once()
+        stream_to_file.assert_not_called()
 
     def test_download_image_read_timeout_retries(self, stream_to_file, sleep):
         stream_to_file.side_effect = [TimeoutError(), ConnectionResetError(), "abc"]

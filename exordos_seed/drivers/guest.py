@@ -109,27 +109,16 @@ class GuestCapDriver:
                 progress = current_progress
                 display_progress_line(progress, written)
 
-        while True:
-            try:
-                checksum_bytes = http.stream_to_bytes(checksum_url)
-                checksum_text = checksum_bytes.decode("utf-8").strip()
-                if checksum_text:
-                    expected_sha256 = checksum_text.split()[0].lower()
-            except urllib.error.HTTPError as e:
-                if e.code == 404:
-                    LOG.warning("SHA256SUM file not found, continue without checksum")
-                else:
-                    raise
-            except RETRIABLE_DOWNLOAD_ERRORS:
-                # Use random timeout to avoid thundering herd
-                timeout = random.randint(5, 60)
-                LOG.exception(
-                    "SHA256SUM download failed, retrying in %d seconds...", timeout
-                )
-                time.sleep(timeout)
-                continue
-
-            break
+        try:
+            checksum_bytes = http.stream_to_bytes(checksum_url)
+            checksum_text = checksum_bytes.decode("utf-8").strip()
+            if checksum_text:
+                expected_sha256 = checksum_text.split()[0].lower()
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                LOG.warning("SHA256SUM file not found, continue without checksum")
+            else:
+                raise
 
         # Download the image with retry logic until it succeeds and (optionally)
         # the checksum matches the expected SHA256 value from the .SHA256SUM file.
