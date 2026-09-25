@@ -259,6 +259,7 @@ def stream_to_file(
     destination_path: str,
     chunk_size: int = c.CHUNK_SIZE,
     chunk_handler: tp.Callable | None = None,
+    timeout: float = c.DOWNLOAD_TIMEOUT,
 ) -> str:
     """
     Downloads a file from a source URL and streams it to a destination path.
@@ -271,6 +272,8 @@ def stream_to_file(
     :param destination_path: Path to write the file to
     :param chunk_size: Size of chunks to read from the URL in bytes
     :param chunk_handler: Optional callable to call for each chunk of data
+    :param timeout: Socket timeout in seconds for connect and each read,
+        not a limit on the whole download
     :raises DownloadMismatchError: If the total amount of data written to disk
         does not match the content length in the HTTP response headers
     :returns: Hex-encoded SHA-256 checksum of the downloaded (compressed)
@@ -283,7 +286,7 @@ def stream_to_file(
     # It's absurd to compress already compressed file
     if not source_url.endswith(".gz") and not source_url.endswith(".zst"):
         req.add_header("Accept-Encoding", "zstd, gzip")
-    with urllib.request.urlopen(req) as response:
+    with urllib.request.urlopen(req, timeout=timeout) as response:
         content_length = int(response.headers.get("Content-Length", 0))
         is_gzipped = response.headers.get(
             "Content-Encoding"
@@ -337,6 +340,7 @@ def stream_to_bytes(
     source_url: str,
     chunk_size: int = c.CHUNK_SIZE,
     chunk_handler: tp.Callable | None = None,
+    timeout: float = c.DOWNLOAD_TIMEOUT,
 ) -> bytes:
     """
     Downloads a file from a source URL and returns it as bytes.
@@ -348,6 +352,8 @@ def stream_to_bytes(
     :param source_url: URL to download from
     :param chunk_size: Size of chunks to read from the URL in bytes
     :param chunk_handler: Optional callable to call for each chunk of data
+    :param timeout: Socket timeout in seconds for connect and each read,
+        not a limit on the whole download
     :returns: The downloaded data as bytes
     """
     read = written = 0
@@ -355,7 +361,7 @@ def stream_to_bytes(
     req = urllib.request.Request(source_url)
     if not source_url.endswith(".gz") and not source_url.endswith(".zst"):
         req.add_header("Accept-Encoding", "zstd, gzip")
-    with urllib.request.urlopen(req) as response:
+    with urllib.request.urlopen(req, timeout=timeout) as response:
         content_length = int(response.headers.get("Content-Length", 0))
         is_gzipped = response.headers.get(
             "Content-Encoding"

@@ -13,6 +13,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from http import client as http_client
 import logging
 import os
 import random
@@ -33,6 +34,14 @@ LOG.setLevel(logging.INFO)
 DEFAULT_BLOCK_DEVICE = "/dev/vda"
 KIND = "guest_machine"
 SHA256SUM_SUFFIX = ".SHA256SUM"
+# Network errors after which a download is retried. Socket timeouts during
+# a read raise TimeoutError, not URLError, so they are listed explicitly.
+RETRIABLE_DOWNLOAD_ERRORS = (
+    urllib.error.URLError,
+    TimeoutError,
+    ConnectionError,
+    http_client.HTTPException,
+)
 
 # Type alias for both client types
 CoreClientType = tp.Union[core.CoreClient, core.AutonomousCoreClient]
@@ -125,7 +134,7 @@ class GuestCapDriver:
                     chunk_handler=handler,
                 ).lower()
             except (
-                urllib.error.URLError,
+                *RETRIABLE_DOWNLOAD_ERRORS,
                 http.DownloadMismatchError,
                 http.DownloadDecompressError,
             ):
