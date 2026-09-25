@@ -13,6 +13,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from http import client as http_client
 import logging
 import os
 import random
@@ -33,6 +34,14 @@ LOG.setLevel(logging.INFO)
 DEFAULT_BLOCK_DEVICE = "/dev/vda"
 KIND = "guest_machine"
 SHA256SUM_SUFFIX = ".SHA256SUM"
+# Network errors after which a download is retried. Socket timeouts during
+# a read raise TimeoutError, not URLError, so they are listed explicitly.
+RETRIABLE_DOWNLOAD_ERRORS = (
+    urllib.error.URLError,
+    TimeoutError,
+    ConnectionError,
+    http_client.HTTPException,
+)
 
 # Type alias for both client types
 CoreClientType = tp.Union[core.CoreClient, core.AutonomousCoreClient]
@@ -100,16 +109,27 @@ class GuestCapDriver:
                 progress = current_progress
                 display_progress_line(progress, written)
 
-        try:
-            checksum_bytes = http.stream_to_bytes(checksum_url)
-            checksum_text = checksum_bytes.decode("utf-8").strip()
-            if checksum_text:
-                expected_sha256 = checksum_text.split()[0].lower()
-        except urllib.error.HTTPError as e:
-            if e.code == 404:
-                LOG.warning("SHA256SUM file not found, continue without checksum")
-            else:
-                raise
+        while True:
+            try:
+                checksum_bytes = http.stream_to_bytes(checksum_url)
+                checksum_text = checksum_bytes.decode("utf-8").strip()
+                if checksum_text:
+                    expected_sha256 = checksum_text.split()[0].lower()
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    LOG.warning("SHA256SUM file not found, continue without checksum")
+                else:
+                    raise
+            except RETRIABLE_DOWNLOAD_ERRORS:
+                # Use random timeout to avoid thundering herd
+                timeout = random.randint(5, 60)
+                LOG.exception(
+                    "SHA256SUM download failed, retrying in %d seconds...", timeout
+                )
+                time.sleep(timeout)
+                continue
+
+            break
 
         # Download the image with retry logic until it succeeds and (optionally)
         # the checksum matches the expected SHA256 value from the .SHA256SUM file.
@@ -125,7 +145,7 @@ class GuestCapDriver:
                     chunk_handler=handler,
                 ).lower()
             except (
-                urllib.error.URLError,
+                *RETRIABLE_DOWNLOAD_ERRORS,
                 http.DownloadMismatchError,
                 http.DownloadDecompressError,
             ):

@@ -40,6 +40,8 @@ def _chunk_size() -> int:
 
 
 CHUNK_SIZE = _chunk_size()
+# Socket timeout (connect and each read) for image downloads, in seconds
+DOWNLOAD_TIMEOUT = 60
 
 KERNEL_CMDLINE_PATH = "/proc/cmdline"
 GC_CMDLINE_DEF_PREFIX = "gc_"
