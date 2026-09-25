@@ -272,7 +272,8 @@ def stream_to_file(
     :param destination_path: Path to write the file to
     :param chunk_size: Size of chunks to read from the URL in bytes
     :param chunk_handler: Optional callable to call for each chunk of data
-    :param timeout: Socket timeout in seconds for connect and each read
+    :param timeout: Socket timeout in seconds for connect and each read,
+        not a limit on the whole download
     :raises DownloadMismatchError: If the total amount of data written to disk
         does not match the content length in the HTTP response headers
     :returns: Hex-encoded SHA-256 checksum of the downloaded (compressed)
@@ -351,7 +352,8 @@ def stream_to_bytes(
     :param source_url: URL to download from
     :param chunk_size: Size of chunks to read from the URL in bytes
     :param chunk_handler: Optional callable to call for each chunk of data
-    :param timeout: Socket timeout in seconds for connect and each read
+    :param timeout: Socket timeout in seconds for connect and each read,
+        not a limit on the whole download
     :returns: The downloaded data as bytes
     """
     read = written = 0

@@ -40,7 +40,9 @@ def _chunk_size() -> int:
 
 
 CHUNK_SIZE = _chunk_size()
-# Socket timeout (connect and each read) for image downloads, in seconds
+# Socket timeout for image downloads, in seconds. It applies to connect and
+# to each read separately, not to the whole download: a slow but steady
+# transfer of a large image never hits it, only a stall with no data does.
 DOWNLOAD_TIMEOUT = 60
 
 KERNEL_CMDLINE_PATH = "/proc/cmdline"
