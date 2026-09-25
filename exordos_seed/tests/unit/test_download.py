@@ -19,6 +19,12 @@ import unittest
 from unittest import mock
 import urllib.error
 
+try:
+    import compression.zstd  # noqa: F401
+except ImportError:
+    # The http module needs compression.zstd, available since Python 3.14
+    raise unittest.SkipTest("compression.zstd requires Python 3.14+")
+
 from exordos_seed.common.http import base as http
 from exordos_seed.drivers import guest
 
