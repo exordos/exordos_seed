@@ -105,7 +105,21 @@ make ipxe
 This creates:
 
 - `undionly.kpxe` - BIOS/PCB boot firmware
-- `1af41041.rom` - ROM image for VirtIO network devices
+- `virtio-net.rom` - ROM image for VirtIO network devices
+
+An iPXE ROM only binds the PCI ID it was built for; on any other device it
+silently drives no NIC, so the guest never sends DHCP. A virtio-net NIC reports
+a different ID depending on the slot it lands in:
+
+| guest NIC slot | guest PCI ID |
+| --- | --- |
+| PCIe root port — libvirt's default on q35, so all `exordos_core` guests | `1af4:1041` |
+| plain PCI slot — i440fx guests, or q35 with no root port | `1af4:1000` |
+
+The ID flips because QEMU's `disable-legacy=auto` drops legacy virtio support
+for any device on a PCIe bus, which turns the NIC non-transitional. So that no
+consumer has to work out which of the two its guests get, `virtio-net.rom`
+carries an image for each and the BIOS runs whichever one matches the device.
 
 To build only specific iPXE targets:
 

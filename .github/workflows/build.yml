@@ -47,7 +47,12 @@ jobs:
             $REPO_ENDPOINT_PUT/${PROJECT_NAME}/${VERSION}/vmlinuz
           curl -X PUT --upload-file ./undionly.kpxe \
             $REPO_ENDPOINT_PUT/${PROJECT_NAME}/${VERSION}/undionly.kpxe
-          curl -X PUT --upload-file ./1af41041.rom \
+          curl -X PUT --upload-file ./virtio-net.rom \
+            $REPO_ENDPOINT_PUT/${PROJECT_NAME}/${VERSION}/virtio-net.rom
+          # Same file under the old name, so hypervisors still pointing at
+          # 1af41041.rom pick the fix up without a coordinated release. Drop
+          # once no consumer asks for that name.
+          curl -X PUT --upload-file ./virtio-net.rom \
             $REPO_ENDPOINT_PUT/${PROJECT_NAME}/${VERSION}/1af41041.rom
 
       - name: Upload to latest on tag
@@ -61,5 +66,7 @@ jobs:
             $REPO_ENDPOINT_PUT/${PROJECT_NAME}/latest/vmlinuz
           curl -X PUT --upload-file ./undionly.kpxe \
             $REPO_ENDPOINT_PUT/${PROJECT_NAME}/latest/undionly.kpxe
-          curl -X PUT --upload-file ./1af41041.rom \
+          curl -X PUT --upload-file ./virtio-net.rom \
+            $REPO_ENDPOINT_PUT/${PROJECT_NAME}/latest/virtio-net.rom
+          curl -X PUT --upload-file ./virtio-net.rom \
             $REPO_ENDPOINT_PUT/${PROJECT_NAME}/latest/1af41041.rom
