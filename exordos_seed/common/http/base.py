@@ -172,6 +172,10 @@ class HttpClient:
         return resp
 
 
+class _ByteWriter(tp.Protocol):
+    def write(self, data: bytes, /) -> int: ...
+
+
 class BaseChunkHandler:
     def __init__(self, content_length: int) -> None:
         self.in_bytes = 0
@@ -179,7 +183,7 @@ class BaseChunkHandler:
 
         self.content_length = content_length
 
-    def handle_chunk(self, chunk: bytes, out_file: tp.BinaryIO) -> int:
+    def handle_chunk(self, chunk: bytes, out_file: _ByteWriter) -> int:
         return 0
 
     def is_clean(self):
@@ -188,7 +192,7 @@ class BaseChunkHandler:
 
 
 class PlainChunkHandler(BaseChunkHandler):
-    def handle_chunk(self, chunk: bytes, out_file: tp.BinaryIO) -> int:
+    def handle_chunk(self, chunk: bytes, out_file: _ByteWriter) -> int:
         out_file.write(chunk)
         written = len(chunk)
         self.in_bytes += written
@@ -203,7 +207,7 @@ class GZChunkHandler(BaseChunkHandler):
         self.d = zlib.decompressobj(wbits=15 + 32)
         super().__init__(content_length=content_length)
 
-    def handle_chunk(self, chunk: bytes, out_file: tp.BinaryIO) -> int:
+    def handle_chunk(self, chunk: bytes, out_file: _ByteWriter) -> int:
         self.in_bytes += len(chunk)
         tail = chunk
         written = 0
@@ -231,7 +235,7 @@ class ZstdChunkHandler(BaseChunkHandler):
         self.d = zstd.ZstdDecompressor()
         super().__init__(content_length=content_length)
 
-    def handle_chunk(self, chunk: bytes, out_file: tp.BinaryIO) -> int:
+    def handle_chunk(self, chunk: bytes, out_file: _ByteWriter) -> int:
         if not chunk:
             return 0
         self.in_bytes += len(chunk)
