@@ -27,11 +27,13 @@ jobs:
     strategy:
       fail-fast: true
     steps:
-#      - name: Install deps
-#        run: sudo apt install --yes liblzma-dev bison flex libelf-dev libssl-dev
       - uses: actions/checkout@v7
         with:
           fetch-depth: 30
+      - name: Install iPXE build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes liblzma-dev
       - name: Build binaries(Kernel, Busybox, Python, Initrd) on Self-Hosted runner
         run: |
           make clean && make && make ipxe
