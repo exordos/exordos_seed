@@ -254,6 +254,34 @@ class ZstdChunkHandler(BaseChunkHandler):
         super().is_clean()
 
 
+_SYNC_INTERVAL_BYTES = 64 << 20
+
+
+class _SyncingWriter:
+    """Bound unsynchronized output, including blocks produced by decompression."""
+
+    def __init__(self, file: tp.BinaryIO):
+        self.file = file
+        self.bytes_since_sync = 0
+
+    def write(self, data: bytes) -> int:
+        size = len(data)
+        remaining = memoryview(data)
+        while remaining:
+            count = min(len(remaining), _SYNC_INTERVAL_BYTES - self.bytes_since_sync)
+            self.file.write(remaining[:count])
+            remaining = remaining[count:]
+            self.bytes_since_sync += count
+            if self.bytes_since_sync == _SYNC_INTERVAL_BYTES:
+                self.sync()
+        return size
+
+    def sync(self) -> None:
+        self.file.flush()
+        os.fsync(self.file.fileno())
+        self.bytes_since_sync = 0
+
+
 def stream_to_file(
     source_url: str,
     destination_path: str,
@@ -305,32 +333,22 @@ def stream_to_file(
             chunker = PlainChunkHandler(content_length)
 
         with open(destination_path, "wb") as file:
-            chunks_since_sync = 0
+            writer = _SyncingWriter(file)
             while True:
                 chunk = response.read(chunk_size)
                 read += len(chunk)
                 if chunk:
                     sha256.update(chunk)
-                written += chunker.handle_chunk(chunk, file)
+                written += chunker.handle_chunk(chunk, writer)
 
                 if not chunk:
                     break
-
-                # Periodically flush page cache to disk to avoid accumulating
-                # gigabytes of dirty pages that cause a large blocking fsync
-                # at the end, which is critical on low-memory VMs.
-                chunks_since_sync += 1
-                if chunks_since_sync >= 64:
-                    file.flush()
-                    os.fsync(file.fileno())
-                    chunks_since_sync = 0
 
                 if chunk_handler is not None:
                     chunk_handler(content_length, read, written, chunk)
 
             # Flush and sync to ensure data is written to disk
-            file.flush()
-            os.fsync(file.fileno())
+            writer.sync()
 
     chunker.is_clean()
     return sha256.hexdigest()
